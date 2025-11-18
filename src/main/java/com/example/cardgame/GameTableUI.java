@@ -23,17 +23,22 @@ public class GameTableUI {
     private final AudioClip drawSound = new AudioClip(
             Objects.requireNonNull(getClass().getResource("/sounds/draw.mp3")).toExternalForm()
     );
+
     private TurnManager turnManager;
+
     private final BorderPane root = new BorderPane();
     private final ImageView cardImage = new ImageView();
     private final Label ruleLabel = new Label();
     private final Random random = new Random();
+
     private final ImageView botTop = new ImageView();
     private final ImageView botLeft = new ImageView();
     private final ImageView botRight = new ImageView();
     private final ImageView botBottom = new ImageView();
-    Button drawButton = new Button("Следваща карта");
+    private final Button drawButton = new Button("Следваща карта");
+
     private final Map<ImageView, Timeline> runningAnimations = new HashMap<>();
+
 
     public GameTableUI() {
         setupCardArea();
@@ -45,6 +50,7 @@ public class GameTableUI {
 
         flipCard(); // първа карта
     }
+
 
     private void setupCardArea() {
         cardImage.setFitWidth(260);
@@ -60,6 +66,7 @@ public class GameTableUI {
         centerBox.setAlignment(Pos.CENTER);
         root.setCenter(centerBox);
     }
+
 
     private void setupBots() {
         styleBot(botTop);
@@ -79,34 +86,23 @@ public class GameTableUI {
         rightBox.setAlignment(Pos.CENTER_RIGHT);
         root.setRight(rightBox);
 
-        // bottom ще бъде заменен от setupDrawButton() — тук ще добавим само botBottom placeholder
         HBox bottomPlaceholder = new HBox(botBottom);
         bottomPlaceholder.setAlignment(Pos.CENTER);
         root.setBottom(bottomPlaceholder);
 
-        // стартираме initial idle за всички ботове
+        // стартови idle анимации за всички ботове
         playAnimation(botTop, "/bots/player1", "idle", 2, 500);
         playAnimation(botLeft, "/bots/player2", "idle", 2, 500);
         playAnimation(botRight, "/bots/player3", "idle", 2, 500);
         playAnimation(botBottom, "/bots/player4", "idle", 2, 500);
 
-        // Пример: след 3s да преминат към walk (поправено да използва правилните ImageView)
-        new Timeline(new KeyFrame(Duration.seconds(3), e -> {
-            playAnimation(botTop, "/bots/player1", "walk", 2, 200);
-        })).play();
-
-        new Timeline(new KeyFrame(Duration.seconds(3), e -> {
-            playAnimation(botLeft, "/bots/player2", "walk", 2, 200);
-        })).play();
-
-        new Timeline(new KeyFrame(Duration.seconds(3), e -> {
-            playAnimation(botRight, "/bots/player3", "walk", 2, 200);
-        })).play();
-
-        new Timeline(new KeyFrame(Duration.seconds(3), e -> {
-            playAnimation(botBottom, "/bots/player4", "walk", 2, 200);
-        })).play();
+        // демонстрация: след 3 секунди преминаване към walk
+        new Timeline(new KeyFrame(Duration.seconds(3), e -> playAnimation(botTop, "/bots/player1", "walk", 2, 200))).play();
+        new Timeline(new KeyFrame(Duration.seconds(3), e -> playAnimation(botLeft, "/bots/player2", "walk", 2, 200))).play();
+        new Timeline(new KeyFrame(Duration.seconds(3), e -> playAnimation(botRight, "/bots/player3", "walk", 2, 200))).play();
+        new Timeline(new KeyFrame(Duration.seconds(3), e -> playAnimation(botBottom, "/bots/player4", "walk", 2, 200))).play();
     }
+
 
     private void setupDrawButton() {
         drawButton.setFont(new Font(20));
@@ -120,10 +116,10 @@ public class GameTableUI {
             playAnimation(botRight, "/bots/player3", "walk", 2, 200);
             playAnimation(botBottom, "/bots/player4", "walk", 2, 200);
 
-            // теглиш карта
+            // играч тегли карта
             flipCardWithBack();
 
-            // връщаме анимация idle
+            // връщаме анимация idle след 1 секунда
             new Timeline(new KeyFrame(Duration.seconds(1), ev -> {
                 playAnimation(botTop, "/bots/player1", "idle", 2, 500);
                 playAnimation(botLeft, "/bots/player2", "idle", 2, 500);
@@ -140,19 +136,11 @@ public class GameTableUI {
         root.setBottom(bottomBox);
     }
 
-    /**
-     * Универсален loader + player за анимации.
-     * Спира вече работеща анимация за същия ImageView (ако има),
-     * зарежда наличните рамки и стартира нов Timeline.
-     */
-    private void playAnimation(ImageView bot, String playerPath, String anim, int frameCountHint, int speedMs) {
-        // стопни предишната
-        Timeline prev = runningAnimations.get(bot);
-        if (prev != null) {
-            prev.stop();
-        }
 
-        // зареждаме рамките — динамично, ако някой рамка липсва я пропускаме
+    private void playAnimation(ImageView bot, String playerPath, String anim, int frameCountHint, int speedMs) {
+        Timeline prev = runningAnimations.get(bot);
+        if (prev != null) prev.stop();
+
         List<Image> framesList = new ArrayList<>();
         for (int i = 0; i < frameCountHint; i++) {
             String path = playerPath + "/" + anim + "/" + i + ".png";
@@ -161,8 +149,7 @@ public class GameTableUI {
                 System.out.println("Missing resource: " + path);
                 continue;
             }
-            Image img = new Image(is, 0, 0, true, false); // 0,0 => оригинален размер, preserveRatio=true, smooth=false
-            framesList.add(img);
+            framesList.add(new Image(is, 0, 0, true, false));
         }
 
         if (framesList.isEmpty()) {
@@ -170,29 +157,25 @@ public class GameTableUI {
             return;
         }
 
-        // build timeline
         Timeline timeline = new Timeline();
-        Duration frameDuration = Duration.millis(Math.max(1, speedMs)); // avoid 0
+        Duration frameDuration = Duration.millis(Math.max(1, speedMs));
 
         for (int i = 0; i < framesList.size(); i++) {
             final Image frame = framesList.get(i);
-            Duration at = frameDuration.multiply(i);
-            timeline.getKeyFrames().add(new KeyFrame(at, ev -> bot.setImage(frame)));
+            timeline.getKeyFrames().add(new KeyFrame(frameDuration.multiply(i), ev -> bot.setImage(frame)));
         }
-        // ensure loop — we add a blank KeyFrame at total duration so cycle works cleanly
         timeline.getKeyFrames().add(new KeyFrame(frameDuration.multiply(framesList.size()), ev -> {}));
-
         timeline.setCycleCount(Timeline.INDEFINITE);
         timeline.play();
 
         runningAnimations.put(bot, timeline);
 
-        // опционално: сетваме fit size (можеш да регулираш)
         bot.setFitWidth(64);
         bot.setFitHeight(64);
         bot.setPreserveRatio(true);
         bot.setSmooth(false);
     }
+
 
     private void styleBot(ImageView bot) {
         bot.setFitWidth(64);
@@ -208,9 +191,11 @@ public class GameTableUI {
         bot.setEffect(shadow);
     }
 
+
     public Pane getRoot() {
         return root;
     }
+
 
     private void flipCard() {
         Card c = deckService.drawCard();
@@ -244,6 +229,7 @@ public class GameTableUI {
         drawSound.play();
         seq.play();
     }
+
 
     private void flipCardWithBack() {
         Card c = deckService.drawCard();
@@ -294,10 +280,13 @@ public class GameTableUI {
         drawSound.play();
         seq.play();
     }
+
+
     public void startPlayerTurn() {
         System.out.println("Твой ход!");
         drawButton.setDisable(false);
     }
+
 
     public void startBotTurn(int botId) {
         System.out.println("Ход на Бот " + botId);
@@ -306,20 +295,16 @@ public class GameTableUI {
             case 1 -> botTop;
             case 2 -> botLeft;
             case 3 -> botRight;
-            case 4 -> botBottom; // ТУК Е ПОПРАВЕНО!
+            case 4 -> botBottom;
             default -> botBottom;
         };
 
         playAnimation(bot, "/bots/player" + botId, "walk", 2, 200);
 
         new Timeline(new KeyFrame(Duration.seconds(1), e -> {
-
             flipCardWithBack(); // бот тегли
-
             playAnimation(bot, "/bots/player" + botId, "idle", 2, 500);
-
             turnManager.nextTurn(); // следващ играч
         })).play();
     }
-
 }
