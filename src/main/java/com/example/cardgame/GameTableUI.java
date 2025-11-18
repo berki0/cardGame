@@ -21,13 +21,11 @@ public class GameTableUI {
 
     private final DeckService deckService = new DeckService();
     private final AudioClip drawSound = new AudioClip(getClass().getResource("/sounds/draw.mp3").toExternalForm());
-
     private final BorderPane root = new BorderPane();
     private final ImageView cardImage = new ImageView();
     private final Label ruleLabel = new Label();
     private final Random random = new Random();
 
-    // Ботове
     private final ImageView botTop = new ImageView();
     private final ImageView botLeft = new ImageView();
     private final ImageView botRight = new ImageView();
@@ -94,58 +92,6 @@ public class GameTableUI {
         root.setBottom(bottomBox);
     }
 
-    private void playIdle(ImageView bot, String playerPath) {
-        int idleIndex = 0; // за сега използваме само idle0
-        int frameCount = 2; // промени според броя на рамките
-        Image[] frames = new Image[frameCount];
-
-        for (int i = 0; i < frameCount; i++) {
-            String path = playerPath + "/idle" + idleIndex + "/" + i + ".png";
-            InputStream is = getClass().getResourceAsStream(path);
-            if (is != null) {
-                frames[i] = new Image(is);
-            } else {
-                System.out.println("Не може да се намери: " + path);
-            }
-        }
-
-        bot.setFitWidth(32);
-        bot.setFitHeight(32);
-
-        Timeline timeline = new Timeline();
-        Duration frameDuration = Duration.millis(500); // Време за показване на една рамка
-
-        for (int i = 0; i < frames.length; i++) {
-            final int idx = i;
-            // Времето на ключовия кадър трябва да е общата продължителност до този момент
-            Duration time = frameDuration.multiply(i);
-
-            timeline.getKeyFrames().add(
-                    new KeyFrame(time, e -> bot.setImage(frames[idx]))
-            );
-        }
-
-        timeline.getKeyFrames().add(
-                new KeyFrame(frameDuration.multiply(frameCount), e -> {
-                })
-        );
-
-        timeline.setCycleCount(Timeline.INDEFINITE);
-        timeline.play();
-    }
-
-    private void styleBot(ImageView bot) {
-        bot.setFitWidth(32);
-        bot.setFitHeight(32);
-        bot.setPreserveRatio(true);
-
-        DropShadow shadow = new DropShadow();
-        shadow.setRadius(5);
-        shadow.setOffsetX(2);
-        shadow.setOffsetY(2);
-        shadow.setColor(Color.BLACK);
-        bot.setEffect(shadow);
-    }
 
     public Pane getRoot() {
         return root;
@@ -233,4 +179,58 @@ public class GameTableUI {
         drawSound.play();
         seq.play();
     }
+
+    private void playIdle(ImageView bot, String playerPath) {
+        int idleIndex = 0; // за сега използваме само idle0
+        int frameCount = 2; // промени според броя на рамките
+        Image[] frames = new Image[frameCount];
+
+        for (int i = 0; i < frameCount; i++) {
+            String path = playerPath + "/idle" + idleIndex + "/" + i + ".png";
+            InputStream is = getClass().getResourceAsStream(path);
+            if (is != null) {
+                frames[i] = new Image(is);
+            } else {
+                System.out.println("Не може да се намери: " + path);
+            }
+        }
+
+        bot.setFitWidth(32);
+        bot.setFitHeight(32);
+
+        Timeline timeline = new Timeline();
+        Duration frameDuration = Duration.millis(500); // Време за показване на една рамка
+
+        for (int i = 0; i < frames.length; i++) {
+            final int idx = i;
+            // Времето на ключовия кадър трябва да е общата продължителност до този момент
+            Duration time = frameDuration.multiply(i);
+
+            timeline.getKeyFrames().add(
+                    new KeyFrame(time, e -> bot.setImage(frames[idx]))
+            );
+        }
+
+        timeline.getKeyFrames().add(
+                new KeyFrame(frameDuration.multiply(frameCount), e -> {
+                })
+        );
+
+        timeline.setCycleCount(Timeline.INDEFINITE);
+        timeline.play();
+    }
+
+    private void styleBot(ImageView bot) {
+        bot.setFitWidth(32);
+        bot.setFitHeight(32);
+        bot.setPreserveRatio(true);
+
+        DropShadow shadow = new DropShadow();
+        shadow.setRadius(5);
+        shadow.setOffsetX(2);
+        shadow.setOffsetY(2);
+        shadow.setColor(Color.BLACK);
+        bot.setEffect(shadow);
+    }
+
 }
