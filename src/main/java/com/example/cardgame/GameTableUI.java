@@ -33,7 +33,6 @@ public class GameTableUI {
     private final ImageView botRight = new ImageView();
     private final ImageView botBottom = new ImageView();
 
-    // държим текущите timeline-и за всеки ImageView, за да можем да ги спираме
     private final Map<ImageView, Timeline> runningAnimations = new HashMap<>();
 
     public GameTableUI() {
@@ -60,13 +59,11 @@ public class GameTableUI {
     }
 
     private void setupBots() {
-        // стил
         styleBot(botTop);
         styleBot(botLeft);
         styleBot(botRight);
         styleBot(botBottom);
 
-        // позициониране в BorderPane (внимавай да не добавяш един и същ ImageView на няколко места)
         HBox topBox = new HBox(botTop);
         topBox.setAlignment(Pos.CENTER);
         root.setTop(topBox);
