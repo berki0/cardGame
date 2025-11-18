@@ -23,22 +23,25 @@ public class GameTableUI {
     private final AudioClip drawSound = new AudioClip(
             Objects.requireNonNull(getClass().getResource("/sounds/draw.mp3")).toExternalForm()
     );
+    private TurnManager turnManager;
     private final BorderPane root = new BorderPane();
     private final ImageView cardImage = new ImageView();
     private final Label ruleLabel = new Label();
     private final Random random = new Random();
-
     private final ImageView botTop = new ImageView();
     private final ImageView botLeft = new ImageView();
     private final ImageView botRight = new ImageView();
     private final ImageView botBottom = new ImageView();
-
+    Button drawButton = new Button("Следваща карта");
     private final Map<ImageView, Timeline> runningAnimations = new HashMap<>();
 
     public GameTableUI() {
         setupCardArea();
         setupBots();
         setupDrawButton();
+
+        turnManager = new TurnManager(this);
+        turnManager.start();
 
         flipCard(); // първа карта
     }
@@ -106,16 +109,21 @@ public class GameTableUI {
     }
 
     private void setupDrawButton() {
-        Button drawButton = new Button("Следваща карта");
         drawButton.setFont(new Font(20));
+
         drawButton.setOnAction(e -> {
-            // пример: когато човек тегли карта, всички ботове за секунда преминават в walk, след което се връщат в idle
+            drawButton.setDisable(true);
+
+            // ботовете анимират walk
             playAnimation(botTop, "/bots/player1", "walk", 2, 200);
             playAnimation(botLeft, "/bots/player2", "walk", 2, 200);
             playAnimation(botRight, "/bots/player3", "walk", 2, 200);
             playAnimation(botBottom, "/bots/player4", "walk", 2, 200);
 
-            // след 1s връщаме обратно на idle
+            // теглиш карта
+            flipCardWithBack();
+
+            // връщаме анимация idle
             new Timeline(new KeyFrame(Duration.seconds(1), ev -> {
                 playAnimation(botTop, "/bots/player1", "idle", 2, 500);
                 playAnimation(botLeft, "/bots/player2", "idle", 2, 500);
@@ -123,8 +131,8 @@ public class GameTableUI {
                 playAnimation(botBottom, "/bots/player4", "idle", 2, 500);
             })).play();
 
-            // и извикваме действието (пусни картата)
-            flipCardWithBack();
+            // преминаване към следващия играч
+            turnManager.nextTurn();
         });
 
         HBox bottomBox = new HBox(10, botBottom, drawButton);
@@ -286,4 +294,32 @@ public class GameTableUI {
         drawSound.play();
         seq.play();
     }
+    public void startPlayerTurn() {
+        System.out.println("Твой ход!");
+        drawButton.setDisable(false);
+    }
+
+    public void startBotTurn(int botId) {
+        System.out.println("Ход на Бот " + botId);
+
+        ImageView bot = switch (botId) {
+            case 1 -> botTop;
+            case 2 -> botLeft;
+            case 3 -> botRight;
+            case 4 -> botBottom; // ТУК Е ПОПРАВЕНО!
+            default -> botBottom;
+        };
+
+        playAnimation(bot, "/bots/player" + botId, "walk", 2, 200);
+
+        new Timeline(new KeyFrame(Duration.seconds(1), e -> {
+
+            flipCardWithBack(); // бот тегли
+
+            playAnimation(bot, "/bots/player" + botId, "idle", 2, 500);
+
+            turnManager.nextTurn(); // следващ играч
+        })).play();
+    }
+
 }
