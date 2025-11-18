@@ -14,6 +14,7 @@ import javafx.util.Duration;
 import javafx.scene.media.AudioClip;
 import javafx.scene.paint.Color;
 
+import java.io.InputStream;
 import java.util.Random;
 
 public class GameTableUI {
@@ -27,13 +28,20 @@ public class GameTableUI {
     private final Random random = new Random();
 
     // Ботове
-    ImageView botTop = new ImageView(new Image(getClass().getResourceAsStream("/bots/player1.png")));
-    ImageView botLeft = new ImageView(new Image(getClass().getResourceAsStream("/bots/player2.png")));
-    ImageView botRight = new ImageView(new Image(getClass().getResourceAsStream("/bots/player3.png")));
-    ImageView botBottom = new ImageView(new Image(getClass().getResourceAsStream("/bots/player4.png")));
+    private final ImageView botTop = new ImageView();
+    private final ImageView botLeft = new ImageView();
+    private final ImageView botRight = new ImageView();
+    private final ImageView botBottom = new ImageView();
 
     public GameTableUI() {
-        // Настройка на картата
+        setupCardArea();
+        setupBots();
+        setupDrawButton();
+
+        flipCard(); // първа карта
+    }
+
+    private void setupCardArea() {
         cardImage.setFitWidth(260);
         cardImage.setFitHeight(360);
         cardImage.setPreserveRatio(true);
@@ -43,44 +51,87 @@ public class GameTableUI {
         ruleLabel.setWrapText(true);
         ruleLabel.setAlignment(Pos.CENTER);
 
+        VBox centerBox = new VBox(10, cardImage, ruleLabel);
+        centerBox.setAlignment(Pos.CENTER);
+        root.setCenter(centerBox);
+    }
+
+    private void setupBots() {
         // Стайлинг на ботовете
         styleBot(botTop);
         styleBot(botLeft);
         styleBot(botRight);
         styleBot(botBottom);
 
-        // Централна зона: карта + правило
-        VBox centerBox = new VBox(10, cardImage, ruleLabel);
-        centerBox.setAlignment(Pos.CENTER);
-        root.setCenter(centerBox);
-
-        // Бутон за теглене
-        Button drawButton = new Button("Следваща карта");
-        drawButton.setFont(new Font(20));
-        drawButton.setOnAction(e -> flipCardWithBack());
-
-        // Горна зона: botTop
         HBox topBox = new HBox(botTop);
         topBox.setAlignment(Pos.CENTER);
         root.setTop(topBox);
 
-        // Лява зона: botLeft
+
         VBox leftBox = new VBox(botLeft);
-        leftBox.setAlignment(Pos.CENTER);
+        leftBox.setAlignment(Pos.CENTER_LEFT); // Подравняване на съдържанието в средата
         root.setLeft(leftBox);
 
-        // Дясна зона: botRight
+
         VBox rightBox = new VBox(botRight);
-        rightBox.setAlignment(Pos.CENTER);
+        rightBox.setAlignment(Pos.CENTER_RIGHT); // Подравняване на съдържанието в средата
         root.setRight(rightBox);
 
-        // Долна зона: botBottom + бутон
+        // Стартираме idle анимации
+        playIdle(botTop, "/bots/player1");
+        playIdle(botLeft, "/bots/player2");
+        playIdle(botRight, "/bots/player3");
+        playIdle(botBottom, "/bots/player4");
+    }
+
+    private void setupDrawButton() {
+        Button drawButton = new Button("Следваща карта");
+        drawButton.setFont(new Font(20));
+        drawButton.setOnAction(e -> flipCardWithBack());
+
         HBox bottomBox = new HBox(10, botBottom, drawButton);
         bottomBox.setAlignment(Pos.CENTER);
         root.setBottom(bottomBox);
+    }
 
-        // Първо показване на карта
-        flipCard();
+    private void playIdle(ImageView bot, String playerPath) {
+        int idleIndex = 0; // за сега използваме само idle0
+        int frameCount = 2; // промени според броя на рамките
+        Image[] frames = new Image[frameCount];
+
+        for (int i = 0; i < frameCount; i++) {
+            String path = playerPath + "/idle" + idleIndex + "/" + i + ".png";
+            InputStream is = getClass().getResourceAsStream(path);
+            if (is != null) {
+                frames[i] = new Image(is);
+            } else {
+                System.out.println("Не може да се намери: " + path);
+            }
+        }
+
+        bot.setFitWidth(32);
+        bot.setFitHeight(32);
+
+        Timeline timeline = new Timeline();
+        Duration frameDuration = Duration.millis(500); // Време за показване на една рамка
+
+        for (int i = 0; i < frames.length; i++) {
+            final int idx = i;
+            // Времето на ключовия кадър трябва да е общата продължителност до този момент
+            Duration time = frameDuration.multiply(i);
+
+            timeline.getKeyFrames().add(
+                    new KeyFrame(time, e -> bot.setImage(frames[idx]))
+            );
+        }
+
+        timeline.getKeyFrames().add(
+                new KeyFrame(frameDuration.multiply(frameCount), e -> {
+                })
+        );
+
+        timeline.setCycleCount(Timeline.INDEFINITE);
+        timeline.play();
     }
 
     private void styleBot(ImageView bot) {
@@ -110,18 +161,15 @@ public class GameTableUI {
         Image img = new Image(getClass().getResourceAsStream("/cards/" + c.getImagePath()));
         ruleLabel.setText(c.getRule());
 
-        // Стартова позиция извън екрана
         cardImage.setTranslateX(-300);
         cardImage.setTranslateY(-300);
         cardImage.setRotate(0);
         cardImage.setRotationAxis(Rotate.Y_AXIS);
 
-        // Долита към центъра
         TranslateTransition move = new TranslateTransition(Duration.millis(400), cardImage);
         move.setToX(0);
         move.setToY(0);
 
-        // Flip
         RotateTransition flip1 = new RotateTransition(Duration.millis(200), cardImage);
         flip1.setFromAngle(0);
         flip1.setToAngle(90);
@@ -150,7 +198,7 @@ public class GameTableUI {
 
         int side = random.nextInt(4);
         double startX = 0, startY = 0;
-        switch(side) {
+        switch (side) {
             case 0 -> startX = -400;
             case 1 -> startX = 400;
             case 2 -> startY = -400;
