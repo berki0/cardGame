@@ -55,31 +55,49 @@ public class GameTableUI {
     }
 
     private void setupBots() {
-        // Стайлинг на ботовете
+
         styleBot(botTop);
         styleBot(botLeft);
         styleBot(botRight);
         styleBot(botBottom);
 
+        // Idle → 3 секунди → Walk (пример)
+        playAnimation(botTop, "/bots/player1", "idle", 2, 500);
+        new Timeline(new KeyFrame(Duration.seconds(3), e -> {
+            playAnimation(botTop, "/bots/player1", "walk", 2, 200);
+        })).play();
+
+        playAnimation(botTop, "/bots/player2", "idle", 2, 500);
+        new Timeline(new KeyFrame(Duration.seconds(3), e -> {
+            playAnimation(botTop, "/bots/player2", "walk", 2, 200);
+        })).play();
+
+        playAnimation(botTop, "/bots/player3", "idle", 2, 500);
+        new Timeline(new KeyFrame(Duration.seconds(3), e -> {
+            playAnimation(botTop, "/bots/player3", "walk", 2, 200);
+        })).play();
+
+        playAnimation(botTop, "/bots/player4", "idle", 2, 500);
+        new Timeline(new KeyFrame(Duration.seconds(3), e -> {
+            playAnimation(botTop, "/bots/player4", "walk", 2, 200);
+        })).play();
+
+        // UI позициониране (както си го имаш)
         HBox topBox = new HBox(botTop);
         topBox.setAlignment(Pos.CENTER);
         root.setTop(topBox);
 
-
         VBox leftBox = new VBox(botLeft);
-        leftBox.setAlignment(Pos.CENTER_LEFT); // Подравняване на съдържанието в средата
+        leftBox.setAlignment(Pos.CENTER);
         root.setLeft(leftBox);
 
-
         VBox rightBox = new VBox(botRight);
-        rightBox.setAlignment(Pos.CENTER_RIGHT); // Подравняване на съдържанието в средата
+        rightBox.setAlignment(Pos.CENTER);
         root.setRight(rightBox);
 
-        // Стартираме idle анимации
-        playIdle(botTop, "/bots/player1");
-        playIdle(botLeft, "/bots/player2");
-        playIdle(botRight, "/bots/player3");
-        playIdle(botBottom, "/bots/player4");
+        HBox bottomBox = new HBox(botBottom);
+        bottomBox.setAlignment(Pos.CENTER);
+        root.setBottom(bottomBox);
     }
 
     private void setupDrawButton() {
@@ -129,6 +147,7 @@ public class GameTableUI {
         drawSound.play();
         seq.play();
     }
+
 
     private void flipCardWithBack() {
         Card c = deckService.drawCard();
@@ -181,23 +200,26 @@ public class GameTableUI {
     }
 
     private void playIdle(ImageView bot, String playerPath) {
-        int idleIndex = 0; // за сега използваме само idle0
-        int frameCount = 2; // промени според броя на рамките
+        int frameCount = 2;
         Image[] frames = new Image[frameCount];
 
+        double requestedWidth = 16; // Използвайте оригиналната ширина (16px)
+        double requestedHeight = 16; // Използвайте оригиналната височина (16px)
+        boolean preserveRatio = true;
+        boolean smooth = false;
+
         for (int i = 0; i < frameCount; i++) {
-            String path = playerPath + "/idle" + idleIndex + "/" + i + ".png";
+            String path = playerPath + "/idle" + "/" + i + ".png";
             InputStream is = getClass().getResourceAsStream(path);
             if (is != null) {
-                frames[i] = new Image(is);
+                frames[i] = new Image(is, requestedWidth, requestedHeight, preserveRatio, smooth);
             } else {
                 System.out.println("Не може да се намери: " + path);
             }
         }
 
-        bot.setFitWidth(32);
-        bot.setFitHeight(32);
-
+        bot.setFitWidth(64);
+        bot.setFitHeight(64);
         Timeline timeline = new Timeline();
         Duration frameDuration = Duration.millis(500); // Време за показване на една рамка
 
@@ -220,10 +242,41 @@ public class GameTableUI {
         timeline.play();
     }
 
+    private void playAnimation(ImageView bot, String playerPath, String anim, int frameCount, int speed) {
+        Image[] frames = new Image[frameCount];
+
+        for (int i = 0; i < frameCount; i++) {
+            String path = playerPath + "/" + anim + "/" + i + ".png";
+            InputStream is = getClass().getResourceAsStream(path);
+            if (is == null) {
+                System.out.println("Missing: " + path);
+                continue;
+            }
+            frames[i] = new Image(is, 0, 0, true, false);
+        }
+
+        Timeline timeline = new Timeline();
+        Duration frameDuration = Duration.millis(speed);
+
+        for (int i = 0; i < frameCount; i++) {
+            int index = i;
+            timeline.getKeyFrames().add(
+                    new KeyFrame(frameDuration.multiply(i), e -> bot.setImage(frames[index]))
+            );
+        }
+
+        // loop
+        timeline.setCycleCount(Timeline.INDEFINITE);
+        timeline.play();
+    }
+
+
     private void styleBot(ImageView bot) {
         bot.setFitWidth(32);
         bot.setFitHeight(32);
         bot.setPreserveRatio(true);
+
+        bot.setSmooth(false);
 
         DropShadow shadow = new DropShadow();
         shadow.setRadius(5);
