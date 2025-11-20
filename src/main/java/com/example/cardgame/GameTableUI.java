@@ -319,12 +319,32 @@ public class GameTableUI {
             case 4 -> targetY = -150;  // отдолу → нагоре
         }
 
+        // колко силно да залита според пиянството
+        double drunkLevel = drunkLevels.get(botId);
+        double maxOffset = 10 + drunkLevel * 20;
+
+        // залитането наляво-надясно
+        Timeline wobble = new Timeline(
+                new KeyFrame(Duration.millis(100), new KeyValue(bot.translateXProperty(), -maxOffset)),
+                new KeyFrame(Duration.millis(200), new KeyValue(bot.translateXProperty(), maxOffset))
+        );
+        wobble.setCycleCount(Animation.INDEFINITE);
+        wobble.setAutoReverse(true);
+        wobble.play();
+
+        // движение към картата
         TranslateTransition go = new TranslateTransition(Duration.millis(2000), bot);
         go.setToX(targetX);
         go.setToY(targetY);
-        go.setOnFinished(e -> onArrive.run());
+
+        go.setOnFinished(e -> {
+            wobble.stop(); // спира залитането при пристигане
+            onArrive.run();
+        });
+
         go.play();
     }
+
 
     private void moveBotBack(ImageView bot) {
         TranslateTransition back = new TranslateTransition(Duration.millis(2000), bot);
