@@ -4,6 +4,7 @@ import javafx.animation.*;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.ProgressBar;
 import javafx.scene.effect.DropShadow;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -38,17 +39,26 @@ public class GameTableUI {
     private final Button drawButton = new Button("Следваща карта");
 
     private final Map<ImageView, Timeline> runningAnimations = new HashMap<>();
+    private final Map<Integer, Double> drunkLevels = new HashMap<>();
+    private final Map<Integer, ProgressBar> drunkBars = new HashMap<>();
+
 
 
     public GameTableUI() {
+        drunkLevels.put(1, 0.0);
+        drunkLevels.put(2, 0.0);
+        drunkLevels.put(3, 0.0);
+        drunkLevels.put(4, 0.0);
+
         setupCardArea();
         setupBots();
+        setupDrunkBars();   // <-- НОВО
         setupDrawButton();
 
         turnManager = new TurnManager(this);
         turnManager.start();
 
-        flipCard(); // първа карта
+        flipCard();
     }
 
 
@@ -103,6 +113,48 @@ public class GameTableUI {
         new Timeline(new KeyFrame(Duration.seconds(3), e -> playAnimation(botBottom, "/bots/player4", "walk", 2, 200))).play();
     }
 
+    private void setupDrunkBars() {
+
+        ProgressBar barTop = new ProgressBar(0);
+        ProgressBar barLeft = new ProgressBar(0);
+        ProgressBar barRight = new ProgressBar(0);
+        ProgressBar barBottom = new ProgressBar(0);
+
+        barTop.setPrefWidth(80);
+        barLeft.setPrefWidth(80);
+        barRight.setPrefWidth(80);
+        barBottom.setPrefWidth(120);
+
+        // правилно свързване с ID
+        drunkBars.put(1, barTop);     // бот 1 – горе
+        drunkBars.put(2, barLeft);    // бот 2 – ляво
+        drunkBars.put(3, barRight);   // бот 3 – дясно
+        drunkBars.put(4, barBottom);  // играч – долу
+
+        // root.getTop() → HBox
+        HBox topBox = (HBox) root.getTop();
+        VBox topContainer = new VBox(botTop, barTop);
+        topContainer.setAlignment(Pos.CENTER);
+        topBox.getChildren().setAll(topContainer);
+
+        // root.getLeft() → VBox
+        VBox leftBox = (VBox) root.getLeft();
+        HBox leftContainer = new HBox(botLeft, barLeft);
+        leftContainer.setAlignment(Pos.CENTER_LEFT);
+        leftBox.getChildren().setAll(leftContainer);
+
+        // root.getRight() → VBox
+        VBox rightBox = (VBox) root.getRight();
+        HBox rightContainer = new HBox(barRight, botRight); // обратен ред – първо бар, после бот
+        rightContainer.setAlignment(Pos.CENTER_RIGHT);
+        rightBox.getChildren().setAll(rightContainer);
+
+        // долу → HBox (botBottom + бутона)
+        HBox bottomBox = (HBox) root.getBottom();
+        VBox bottomContainer = new VBox(botBottom, barBottom);
+        bottomContainer.setAlignment(Pos.CENTER);
+        bottomBox.getChildren().add(bottomContainer);
+    }
 
     private void setupDrawButton() {
         drawButton.setFont(new Font(20));
@@ -212,22 +264,88 @@ public class GameTableUI {
         cardImage.setRotate(0);
         cardImage.setRotationAxis(Rotate.Y_AXIS);
 
-        TranslateTransition move = new TranslateTransition(Duration.millis(400), cardImage);
+        TranslateTransition move = new TranslateTransition(Duration.millis(2000), cardImage);
         move.setToX(0);
         move.setToY(0);
 
-        RotateTransition flip1 = new RotateTransition(Duration.millis(200), cardImage);
+        RotateTransition flip1 = new RotateTransition(Duration.millis(1000), cardImage);
         flip1.setFromAngle(0);
         flip1.setToAngle(90);
         flip1.setOnFinished(e -> cardImage.setImage(img));
 
-        RotateTransition flip2 = new RotateTransition(Duration.millis(200), cardImage);
+        RotateTransition flip2 = new RotateTransition(Duration.millis(1000), cardImage);
         flip2.setFromAngle(90);
         flip2.setToAngle(0);
 
         SequentialTransition seq = new SequentialTransition(move, flip1, flip2);
         drawSound.play();
         seq.play();
+    }
+
+    private void shakeBot(ImageView bot, double intensity) {
+
+        // intensity = 0.0 → няма тресене
+        // intensity = 1.0 → максимално тресене
+
+        double maxOffset = 5 + intensity * 10; // усилва се с опиването
+
+        Timeline shake = new Timeline(
+                new KeyFrame(Duration.millis(50),
+                        new KeyValue(bot.translateXProperty(), (Math.random() - 0.5) * maxOffset),
+                        new KeyValue(bot.translateYProperty(), (Math.random() - 0.5) * maxOffset)
+                ),
+                new KeyFrame(Duration.millis(100),
+                        new KeyValue(bot.translateXProperty(), (Math.random() - 0.5) * maxOffset),
+                        new KeyValue(bot.translateYProperty(), (Math.random() - 0.5) * maxOffset)
+                )
+        );
+
+        shake.setCycleCount(Animation.INDEFINITE);
+        shake.setAutoReverse(true);
+        shake.play();
+    }
+
+
+
+    private void moveBotToCard(int botId, ImageView bot, Runnable onArrive) {
+
+        double targetX = 0;
+        double targetY = 0;
+
+        switch (botId) {
+            case 1 -> targetY = 150;   // отгоре → надолу
+            case 2 -> targetX = 150;   // отляво → надясно
+            case 3 -> targetX = -150;  // отдясно → наляво
+            case 4 -> targetY = -150;  // отдолу → нагоре
+        }
+
+        TranslateTransition go = new TranslateTransition(Duration.millis(2000), bot);
+        go.setToX(targetX);
+        go.setToY(targetY);
+        go.setOnFinished(e -> onArrive.run());
+        go.play();
+    }
+
+    private void moveBotBack(ImageView bot) {
+        TranslateTransition back = new TranslateTransition(Duration.millis(2000), bot);
+        back.setToX(0);
+        back.setToY(0);
+        back.play();
+    }
+
+    private void updateDrunkBarColor(ProgressBar bar, double value) {
+
+        String color;
+
+        if (value < 0.34) {
+            color = "green";
+        } else if (value < 0.67) {
+            color = "orange";
+        } else {
+            color = "red";
+        }
+
+        bar.setStyle("-fx-accent: " + color + ";");
     }
 
 
@@ -283,12 +401,60 @@ public class GameTableUI {
 
 
     public void startPlayerTurn() {
+        increaseDrunk(1, 0.1);
+
         System.out.println("Твой ход!");
         drawButton.setDisable(false);
     }
+    public void increaseDrunk(int id, double amount) {
+        double lvl = drunkLevels.get(id);
+        lvl = Math.min(1.0, lvl + amount);
+
+        drunkLevels.put(id, lvl);
+
+        ProgressBar bar = drunkBars.get(id);
+
+        Timeline t = new Timeline(
+                new KeyFrame(Duration.millis(300),
+                        new KeyValue(bar.progressProperty(), lvl, Interpolator.EASE_BOTH)
+                )
+        );
+        t.play();
+
+        updateDrunkBarColor(bar, lvl);
+
+        // добавяме пиянското треперене
+        ImageView bot = switch (id) {
+            case 1 -> botTop;
+            case 2 -> botLeft;
+            case 3 -> botRight;
+            case 4 -> botBottom;
+            default -> botBottom;
+        };
+
+        shakeBot(bot, lvl);
+    }
+    private void wobbleBot(ImageView bot, double intensity) {
+        // intensity: 0.0 = не залита, 1.0 = много силно
+        double maxOffset = 10 + intensity * 20; // колко далече се клати наляво-дясно
+
+        Timeline wobble = new Timeline(
+                new KeyFrame(Duration.millis(100),
+                        new KeyValue(bot.translateXProperty(), -maxOffset)
+                ),
+                new KeyFrame(Duration.millis(200),
+                        new KeyValue(bot.translateXProperty(), maxOffset)
+                )
+        );
+        wobble.setCycleCount(Animation.INDEFINITE);
+        wobble.setAutoReverse(true);
+        wobble.play();
+    }
+
 
 
     public void startBotTurn(int botId) {
+        increaseDrunk(botId, 0.1);
         System.out.println("Ход на Бот " + botId);
 
         ImageView bot = switch (botId) {
@@ -299,12 +465,22 @@ public class GameTableUI {
             default -> botBottom;
         };
 
+        double drunkLevel = drunkLevels.get(botId);
+        wobbleBot(bot, drunkLevel);
+
         playAnimation(bot, "/bots/player" + botId, "walk", 2, 200);
 
-        new Timeline(new KeyFrame(Duration.seconds(1), e -> {
-            flipCardWithBack(); // бот тегли
-            playAnimation(bot, "/bots/player" + botId, "idle", 2, 500);
-            turnManager.nextTurn(); // следващ играч
-        })).play();
+
+        moveBotToCard(botId, bot, () -> {
+
+            flipCardWithBack();
+
+            moveBotBack(bot);
+
+            new Timeline(new KeyFrame(Duration.seconds(0.8), e -> {
+                playAnimation(bot, "/bots/player" + botId, "idle", 2, 500);
+                turnManager.nextTurn();
+            })).play();
+        });
     }
 }
